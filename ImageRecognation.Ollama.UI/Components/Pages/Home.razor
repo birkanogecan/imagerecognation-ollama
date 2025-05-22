@@ -1,0 +1,52 @@
+﻿@* @page "/"
+@rendermode InteractiveServer
+<PageTitle>Image Object Detection</PageTitle>
+
+<h3>Görsel Yükle ve Nesne Tespiti Yap</h3>
+
+<input type="file" id="imageInput" accept="image/*" />
+<button type="button" @onclick="UploadImage">Yükle</button>
+<div id="resultArea"></div>
+
+@inject IJSRuntime JS
+
+@code {
+    private async Task UploadImage()
+    {
+        await JS.InvokeVoidAsync("imageUploadInterop.uploadImageAndShowResult", "imageInput", "http://localhost:5077/detect", "resultArea");
+    }
+} *@
+
+@page "/"
+@rendermode InteractiveServer
+<PageTitle>Image Object Detection</PageTitle>
+
+<h3>Görsel Yükle ve Nesne Tespiti Yap</h3>
+
+<input type="file" id="imageInput" accept="image/*" />
+<button type="button" @onclick="UploadImage" disabled="@IsLoading">Yükle</button>
+<div id="resultArea"></div>
+
+@inject IJSRuntime JS
+
+@code {
+    private bool IsLoading = false;
+    private string? ResultImageBase64;
+
+    private DotNetObjectReference<Home>? _dotNetRef;
+
+    private async Task UploadImage()
+    {
+        IsLoading = true;
+        _dotNetRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("imageUploadInterop.uploadImageAndShowResult", "imageInput", "http://localhost:5077/detect", "resultArea", _dotNetRef);
+    }
+
+    [JSInvokable]
+    public void OnApiResult(string resultImageBase64)
+    {
+        ResultImageBase64 = resultImageBase64;
+        IsLoading = false;
+        StateHasChanged();
+    }
+}
