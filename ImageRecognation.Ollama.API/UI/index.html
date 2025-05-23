@@ -54,7 +54,9 @@
       <input class="form-control" type="file" id="imageInput" accept="image/*" />
     </div>
     <div class="d-flex gap-2 mb-4">
-      <button id="processBtn" class="btn btn-primary" disabled>İşle</button>
+      <button id="processBtn" class="btn btn-primary" disabled>Detect</button>
+      <button id="classifyBtn" class="btn btn-secondary" disabled>Classify</button>
+      <button id="resetBtn" class="btn btn-outline-danger" type="button">Reset</button>
     </div>
 
     <!-- Image preview -->
@@ -78,6 +80,11 @@
         </table>
       </div>
     </div>
+    <!-- Classification results -->
+    <div id="classifySection" style="display: none;">
+      <h2>Sınıflandırma Sonuçları</h2>
+      <div id="classifyObjects"></div>
+    </div>
   </div>
 
   <!-- Bootstrap JS + Popper -->
@@ -85,14 +92,20 @@
   <script>
     const imageInput = document.getElementById('imageInput');
     const processBtn = document.getElementById('processBtn');
+    const classifyBtn = document.getElementById('classifyBtn');
+    const resetBtn = document.getElementById('resetBtn');
     const previewContainer = document.getElementById('previewContainer');
     const objectsSection = document.getElementById('objectsSection');
     const objectsTableBody = document.querySelector('#objectsTable tbody');
+    const classifySection = document.getElementById('classifySection');
+    const classifyObjectsDiv = document.getElementById('classifyObjects');
 
     let selectedFile = null;
 
     imageInput.addEventListener('change', handleFileSelect);
-    processBtn.addEventListener('click', handleProcess);
+    processBtn.addEventListener('click', () => handleProcess('detect'));
+    classifyBtn.addEventListener('click', () => handleProcess('classify'));
+    resetBtn.addEventListener('click', resetUI);
 
     function handleFileSelect(event) {
       const file = event.target.files[0];
@@ -106,7 +119,9 @@
 
       previewContainer.innerHTML = getPreviewTemplate(imgUrl);
       processBtn.disabled = false;
+      classifyBtn.disabled = false;
       objectsSection.style.display = 'none';
+      classifySection.style.display = 'none';
     }
 
     function getPreviewTemplate(src) {
@@ -120,7 +135,7 @@
       `;
     }
 
-    async function handleProcess() {
+    async function handleProcess(type) {
       if (!selectedFile) return;
 
       // UI: show overlay + blur
@@ -129,26 +144,36 @@
       previewImg.classList.add('processing');
       overlay.classList.add('active');
       processBtn.disabled = true;
+      classifyBtn.disabled = true;
 
       try {
         const formData = new FormData();
         formData.append('file', selectedFile);
 
-        const response = await fetch('http://localhost:5077/detect', {
+        const url = type === 'classify'
+          ? 'http://localhost:5077/classify'
+          : 'http://localhost:5077/detect';
+
+        const response = await fetch(url, {
           method: 'POST',
           body: formData
         });
 
         if (!response.ok) throw new Error('Sunucu hatası');
 
-        const detectionResult = await response.json();
-        renderDetectionResult(detectionResult);
+        const result = await response.json();
+        if (type === 'detect') {
+          renderDetectionResult(result);
+        } else {
+          renderClassificationResult(result);
+        }
       } catch (err) {
         console.error(err);
         alert('Bir hata oluştu. Lütfen tekrar deneyin.');
         previewImg.classList.remove('processing');
         overlay.classList.remove('active');
         processBtn.disabled = false;
+        classifyBtn.disabled = false;
       }
     }
 
@@ -176,14 +201,48 @@
       });
 
       objectsSection.style.display = 'block';
+      classifySection.style.display = 'none';
       processBtn.disabled = false;
+      classifyBtn.disabled = false;
+    }
+
+    function renderClassificationResult(result) {
+      // Görsel sabit kalacak, sadece blur ve overlay kalkacak
+      const previewImg = document.getElementById('previewImg');
+      const overlay = document.getElementById('overlay');
+      previewImg.classList.remove('processing');
+      overlay.classList.remove('active');
+
+      // Classification objects
+      classifyObjectsDiv.innerHTML = '';
+      if (result.objects && result.objects.length > 0) {
+        result.objects.forEach(obj => {
+          let html = `<div class="mb-3"><strong>${obj.object_label}</strong>`;
+          if (obj.attributes && Object.keys(obj.attributes).length > 0) {
+            html += `<ul>`;
+            for (const [key, value] of Object.entries(obj.attributes)) {
+              html += `<li>${key}: ${value}</li>`;
+            }
+            html += `</ul>`;
+          }
+          html += `</div>`;
+          classifyObjectsDiv.innerHTML += html;
+        });
+      }
+      classifySection.style.display = 'block';
+      objectsSection.style.display = 'none';
+      processBtn.disabled = false;
+      classifyBtn.disabled = false;
     }
 
     function resetUI() {
       previewContainer.innerHTML = '';
       objectsSection.style.display = 'none';
+      classifySection.style.display = 'none';
       processBtn.disabled = true;
+      classifyBtn.disabled = true;
       selectedFile = null;
+      imageInput.value = null;
     }
   </script>
 </body>

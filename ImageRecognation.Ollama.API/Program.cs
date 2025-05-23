@@ -18,6 +18,7 @@ namespace ImageRecognation.Ollama.API
             builder.Services.AddOpenApi();
             builder.Services.AddHttpClient();
             builder.Services.AddTransient<ObjectDetectionEngine>();
+            builder.Services.AddTransient<ObjectClassificationEngine>();
 
             builder.Services.AddCors(options =>
             {
@@ -40,7 +41,7 @@ namespace ImageRecognation.Ollama.API
 
             app.UseAuthorization();
             app.UseCors("AllowAll");
-
+            
             app.MapPost("/detect", async (HttpRequest request) =>
             {
                 var form = await request.ReadFormAsync();
@@ -52,7 +53,18 @@ namespace ImageRecognation.Ollama.API
             })
             .WithName("Detect");
 
-            
+            app.MapPost("/classify", async (HttpRequest request) =>
+            {
+                var form = await request.ReadFormAsync();
+                var file = form.Files.GetFile("file");
+                var objectDetectionEngine = app.Services.GetRequiredService<ObjectClassificationEngine>();
+                ClassificationResult classificationResult = await objectDetectionEngine.Classify(file);
+
+                return classificationResult;
+            })
+            .WithName("Classify");
+
+
             app.Run();
         }
     }
