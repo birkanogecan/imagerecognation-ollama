@@ -56,6 +56,7 @@
     <div class="d-flex gap-2 mb-4">
       <button id="processBtn" class="btn btn-primary" disabled>Detect</button>
       <button id="classifyBtn" class="btn btn-secondary" disabled>Classify</button>
+      <button id="textRecogBtn" class="btn btn-info" disabled>TextRecog</button>
       <button id="resetBtn" class="btn btn-outline-danger" type="button">Reset</button>
     </div>
 
@@ -85,6 +86,11 @@
       <h2>Sınıflandırma Sonuçları</h2>
       <div id="classifyObjects"></div>
     </div>
+    <!-- Text recognition result -->
+    <div id="textRecogSection" style="display: none;">
+      <h2>Text Recognition Sonucu</h2>
+      <div id="textRecogResult" class="alert alert-info"></div>
+    </div>
   </div>
 
   <!-- Bootstrap JS + Popper -->
@@ -93,18 +99,22 @@
     const imageInput = document.getElementById('imageInput');
     const processBtn = document.getElementById('processBtn');
     const classifyBtn = document.getElementById('classifyBtn');
+    const textRecogBtn = document.getElementById('textRecogBtn');
     const resetBtn = document.getElementById('resetBtn');
     const previewContainer = document.getElementById('previewContainer');
     const objectsSection = document.getElementById('objectsSection');
     const objectsTableBody = document.querySelector('#objectsTable tbody');
     const classifySection = document.getElementById('classifySection');
     const classifyObjectsDiv = document.getElementById('classifyObjects');
+    const textRecogSection = document.getElementById('textRecogSection');
+    const textRecogResult = document.getElementById('textRecogResult');
 
     let selectedFile = null;
 
     imageInput.addEventListener('change', handleFileSelect);
     processBtn.addEventListener('click', () => handleProcess('detect'));
     classifyBtn.addEventListener('click', () => handleProcess('classify'));
+    textRecogBtn.addEventListener('click', () => handleProcess('textrecog'));
     resetBtn.addEventListener('click', resetUI);
 
     function handleFileSelect(event) {
@@ -120,8 +130,10 @@
       previewContainer.innerHTML = getPreviewTemplate(imgUrl);
       processBtn.disabled = false;
       classifyBtn.disabled = false;
+      textRecogBtn.disabled = false;
       objectsSection.style.display = 'none';
       classifySection.style.display = 'none';
+      textRecogSection.style.display = 'none';
     }
 
     function getPreviewTemplate(src) {
@@ -145,14 +157,19 @@
       overlay.classList.add('active');
       processBtn.disabled = true;
       classifyBtn.disabled = true;
+      textRecogBtn.disabled = true;
 
       try {
         const formData = new FormData();
         formData.append('file', selectedFile);
 
-        const url = type === 'classify'
-          ? 'http://localhost:5077/classify'
-          : 'http://localhost:5077/detect';
+        let url = '';
+        if (type === 'classify')
+          url = 'http://localhost:5077/classify';
+        else if (type === 'detect')
+          url = 'http://localhost:5077/detect';
+        else if (type === 'textrecog')
+          url = 'http://localhost:5077/textrecognation';
 
         const response = await fetch(url, {
           method: 'POST',
@@ -161,11 +178,15 @@
 
         if (!response.ok) throw new Error('Sunucu hatası');
 
-        const result = await response.json();
         if (type === 'detect') {
+          const result = await response.json();
           renderDetectionResult(result);
-        } else {
+        } else if (type === 'classify') {
+          const result = await response.json();
           renderClassificationResult(result);
+        } else if (type === 'textrecog') {
+          const text = await response.text();
+          renderTextRecogResult(text);
         }
       } catch (err) {
         console.error(err);
@@ -174,6 +195,7 @@
         overlay.classList.remove('active');
         processBtn.disabled = false;
         classifyBtn.disabled = false;
+        textRecogBtn.disabled = false;
       }
     }
 
@@ -202,8 +224,10 @@
 
       objectsSection.style.display = 'block';
       classifySection.style.display = 'none';
+      textRecogSection.style.display = 'none';
       processBtn.disabled = false;
       classifyBtn.disabled = false;
+      textRecogBtn.disabled = false;
     }
 
     function renderClassificationResult(result) {
@@ -231,16 +255,36 @@
       }
       classifySection.style.display = 'block';
       objectsSection.style.display = 'none';
+      textRecogSection.style.display = 'none';
       processBtn.disabled = false;
       classifyBtn.disabled = false;
+      textRecogBtn.disabled = false;
+    }
+
+    function renderTextRecogResult(text) {
+      // Görsel sabit kalacak, sadece blur ve overlay kalkacak
+      const previewImg = document.getElementById('previewImg');
+      const overlay = document.getElementById('overlay');
+      previewImg.classList.remove('processing');
+      overlay.classList.remove('active');
+
+      textRecogResult.textContent = text;
+      textRecogSection.style.display = 'block';
+      objectsSection.style.display = 'none';
+      classifySection.style.display = 'none';
+      processBtn.disabled = false;
+      classifyBtn.disabled = false;
+      textRecogBtn.disabled = false;
     }
 
     function resetUI() {
       previewContainer.innerHTML = '';
       objectsSection.style.display = 'none';
       classifySection.style.display = 'none';
+      textRecogSection.style.display = 'none';
       processBtn.disabled = true;
       classifyBtn.disabled = true;
+      textRecogBtn.disabled = true;
       selectedFile = null;
       imageInput.value = null;
     }

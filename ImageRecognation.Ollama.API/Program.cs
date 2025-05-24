@@ -19,6 +19,7 @@ namespace ImageRecognation.Ollama.API
             builder.Services.AddHttpClient();
             builder.Services.AddTransient<ObjectDetectionEngine>();
             builder.Services.AddTransient<ObjectClassificationEngine>();
+            builder.Services.AddTransient<TextRecognationEngine>();
 
             builder.Services.AddCors(options =>
             {
@@ -64,6 +65,16 @@ namespace ImageRecognation.Ollama.API
             })
             .WithName("Classify");
 
+            app.MapPost("/textrecognation", async (HttpRequest request) =>
+            {
+                var form = await request.ReadFormAsync();
+                var file = form.Files.GetFile("file");
+                var textRecognationEngine = app.Services.GetRequiredService<TextRecognationEngine>();
+                string textRecognationResult = await textRecognationEngine.TextRecognation(file);
+
+                return textRecognationResult;
+            })
+           .WithName("TextRecognation");
 
             app.Run();
         }

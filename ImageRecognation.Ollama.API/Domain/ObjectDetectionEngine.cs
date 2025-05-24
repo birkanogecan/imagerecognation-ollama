@@ -19,14 +19,15 @@ namespace ImageRecognation.Ollama.API.Domain
         }
         public async Task<DetectionResult> Detect(IFormFile file)
         {
-            
             using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);      
-            var fileBytes = ms.ToArray();   
+
+            await file.CopyToAsync(ms);
+            var fileBytes = ms.ToArray();
             string base64Image = Convert.ToBase64String(fileBytes);
             using Image<Rgba32> img = Image.Load<Rgba32>(fileBytes);
-            // 2. Ollama'ya HTTP ile istek at
+
             var client = _httpClientFactory.CreateClient();
+
             var ollamaRequest = new
             {
                 model = "qwen2.5vl:7b",
@@ -36,7 +37,9 @@ namespace ImageRecognation.Ollama.API.Domain
             };
 
             var response = await client.PostAsJsonAsync("http://localhost:11434/api/generate", ollamaRequest);
+
             var ollamaResult = await response.Content.ReadFromJsonAsync<OllamaApiResponse>();
+
             var jsonBlock = ExtractJsonArray(ollamaResult?.response);
 
             var detectedObjects = new List<DetectedObject>();
@@ -47,13 +50,13 @@ namespace ImageRecognation.Ollama.API.Domain
                 {
                     detectedObjects = JsonSerializer.Deserialize<List<DetectedObject>>(jsonBlock) ?? new List<DetectedObject>();
                 }
-                catch
+                catch (Exception ex)
                 {
-                  
+                    Console.WriteLine(ex.Message);
                 }
             }
 
-           
+
             Font font = SystemFonts.CreateFont("Arial", 18);
 
             foreach (var d in detectedObjects)
@@ -71,8 +74,9 @@ namespace ImageRecognation.Ollama.API.Domain
             }
 
             using var outStream = new MemoryStream();
+
             img.SaveAsPng(outStream);
-           
+
             DetectionResult detectionResult = new DetectionResult()
             {
                 FileStream = outStream.ToArray(),
@@ -85,7 +89,9 @@ namespace ImageRecognation.Ollama.API.Domain
         private static string? ExtractJsonArray(string? response)
         {
             if (string.IsNullOrWhiteSpace(response)) return null;
+
             var match = Regex.Match(response, @"\[.*\]", RegexOptions.Singleline);
+
             return match.Success ? match.Value : null;
         }
     }

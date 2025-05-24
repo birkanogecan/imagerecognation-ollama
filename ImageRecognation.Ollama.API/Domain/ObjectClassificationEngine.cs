@@ -18,14 +18,15 @@ namespace ImageRecognation.Ollama.API.Domain
         }
         public async Task<ClassificationResult> Classify(IFormFile file)
         {
-
             using var ms = new MemoryStream();
+
             await file.CopyToAsync(ms);
             var fileBytes = ms.ToArray();
             string base64Image = Convert.ToBase64String(fileBytes);
             using Image<Rgba32> img = Image.Load<Rgba32>(fileBytes);
-            // 2. Ollama'ya HTTP ile istek at
+            
             var client = _httpClientFactory.CreateClient();
+
             var ollamaRequest = new
             {
                 model = "qwen2.5vl:7b",
@@ -51,31 +52,11 @@ namespace ImageRecognation.Ollama.API.Domain
                 {
                     detectedObjects = JsonSerializer.Deserialize<List<ClassificationDetectedObject>>(jsonBlock) ?? new List<ClassificationDetectedObject>();
                 }
-                catch
+                catch (Exception ex)
                 {
-
+                    Console.WriteLine(ex.Message);
                 }
             }
-
-
-            //Font font = SystemFonts.CreateFont("Arial", 18);
-
-            //foreach (var d in detectedObjects)
-            //{
-            //    Point point = new Point(d.X, d.Y);
-            //    Size size = new Size(d.Width, d.Height);
-            //    var rect = new Rectangle(point, size);
-
-            //    img.Mutate(ctx =>
-            //    {
-            //        ctx.Draw(Pens.Solid(Color.Red, 3), rect);
-            //        var labelPos = new PointF(d.X, Math.Max(0, d.Y - 24));
-            //        ctx.DrawText(d.Label, font, Color.Yellow, labelPos);
-            //    });
-            //}
-
-            using var outStream = new MemoryStream();
-            img.SaveAsPng(outStream);
 
             ClassificationResult detectionResult = new ClassificationResult()
             {
@@ -88,7 +69,9 @@ namespace ImageRecognation.Ollama.API.Domain
         private static string? ExtractJsonArray(string? response)
         {
             if (string.IsNullOrWhiteSpace(response)) return null;
+
             var match = Regex.Match(response, @"\[.*\]", RegexOptions.Singleline);
+
             return match.Success ? match.Value : null;
         }
     }
