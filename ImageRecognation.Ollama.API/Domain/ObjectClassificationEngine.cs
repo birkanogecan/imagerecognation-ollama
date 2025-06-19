@@ -16,6 +16,16 @@ namespace ImageRecognation.Ollama.API.Domain
         {
             _httpClientFactory = httpClientFactory;
         }
+        /// <summary>
+        /// Analyzes the provided image file to detect textile products and their attributes.
+        /// </summary>
+        /// <remarks>This method uses a computer vision model to analyze the image and extract information
+        /// about textile products. Each detected product includes an object label (e.g., "tshirt", "jeans") and a set
+        /// of attributes such as color, material, and category. Attributes with unknown values are explicitly marked as
+        /// "unknown".</remarks>
+        /// <param name="file">The image file to be analyzed. Must be a valid image format.</param>
+        /// <returns>A <see cref="ClassificationResult"/> containing the detected textile products and their attributes. If no
+        /// products are detected, the <see cref="ClassificationResult.Objects"/> property will be an empty list.</returns>
         public async Task<ClassificationResult> Classify(IFormFile file)
         {
             using var ms = new MemoryStream();

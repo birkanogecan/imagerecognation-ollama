@@ -13,6 +13,14 @@ namespace ImageRecognation.Ollama.API.Domain
         {
             _httpClientFactory = httpClientFactory;
         }
+        /// <summary>
+        /// Performs text recognition on the provided image file and returns the extracted text.
+        /// </summary>
+        /// <remarks>This method uses an external API to perform text recognition. The image file is
+        /// converted to a Base64-encoded string and sent to the API for processing. Ensure the API endpoint is
+        /// accessible and properly configured.</remarks>
+        /// <param name="file">The image file to process. Must be a valid <see cref="IFormFile"/> containing the image data.</param>
+        /// <returns>A <see cref="string"/> containing the recognized text from the image, organized in lines.</returns>
         public async Task<string> TextRecognation(IFormFile file)
         {
             using var ms = new MemoryStream();

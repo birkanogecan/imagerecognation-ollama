@@ -17,6 +17,17 @@ namespace ImageRecognation.Ollama.API.Domain
         {
             _httpClientFactory = httpClientFactory;
         }
+        /// <summary>
+        /// Detects objects in an image file and returns the detection results, including annotated image data and
+        /// object details.
+        /// </summary>
+        /// <remarks>This method processes the provided image file by performing object detection using an
+        /// external API. The detected objects are annotated on the image, and the resulting image is returned as part
+        /// of the detection result. The bounding box coordinates are computed based on the original image
+        /// dimensions.</remarks>
+        /// <param name="file">The image file to analyze. Must be a valid image file in a supported format.</param>
+        /// <returns>A <see cref="DetectionResult"/> containing the annotated image data and a list of detected objects. The
+        /// detected objects include their labels and bounding box coordinates.</returns>
         public async Task<DetectionResult> Detect(IFormFile file)
         {
             using var ms = new MemoryStream();
