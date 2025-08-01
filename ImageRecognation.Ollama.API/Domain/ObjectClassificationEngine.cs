@@ -34,18 +34,52 @@ namespace ImageRecognation.Ollama.API.Domain
             var fileBytes = ms.ToArray();
             string base64Image = Convert.ToBase64String(fileBytes);
             using Image<Rgba32> img = Image.Load<Rgba32>(fileBytes);
-            
-            var client = _httpClientFactory.CreateClient();
 
-            var ollamaRequest = new
-            {
-                model = "qwen2.5vl:7b",
-                prompt = $"You are a cutting-edge computer-vision and fashion product expert. " +
+            var client = _httpClientFactory.CreateClient();
+            string systemPrompt = $"You are a cutting-edge computer-vision and fashion product expert. " +
                 $"\r\nYour task is to analyze the provided image, detect all textile items " +
                 $"\r\n1. Detect each textile product in the image.  " +
                 $"\r\n2. For each detected product, output an object with:  " +
                 $"\r\n   - \"object_label\": a short identifier (e.g. \"tshirt\", \"jeans\", \"jacket\")  \r\n   - \"attributes\": a JSON object with dynamic keys—each key is the name of an e-commerce attribute you identify (e.g. \"color\", \"sex\", \"material\", \"brand\", \"category\", \"subcategory\", etc.).  \r\n     • Return exactly one value per attribute as a string.  " +
-                $"\r\n     • Do NOT return arrays or multiple values.  \r\n3. If you cannot detect a particular attribute, set its value to \"unknown\".  \r\n4. Return ONLY valid JSON with a single root object containing an \"objects\" array—no extra text or explanation.\r\n",
+                $"\r\n     • Do NOT return arrays or multiple values.  \r\n3. If you cannot detect a particular attribute, set its value to \"unknown\".  \r\n4. Return ONLY valid JSON with a single root object containing an \"objects\" array—no extra text or explanation.\r\n";
+
+            string systemPrompt2 =
+"You are a cutting-edge computer-vision and fashion product expert. Your task is to analyze the provided image, detect all textile items. Detect each textile product in the image.\n" +
+"\n" +
+"For each detected product, output an object with the following structure:\n" +
+"\n" +
+"{\n" +
+"  \"category\": \"e.g. Clothing, Shoes, Bags\",\n" +
+"  \"subcategory\": \"e.g. T-shirt, Jeans, Sneakers\",\n" +
+"  \"brand\": \"e.g. Nike, Zara, H&M\",\n" +
+"  \"gender\": \"e.g. Male, Female, Unisex, Kids\",\n" +
+"  \"size\": \"e.g. M, L, XL, 36, 38\",\n" +
+"  \"fit_type\": \"e.g. Slim Fit, Regular Fit, Oversized\",\n" +
+"  \"sleeve_length\": \"e.g. Sleeveless, Short Sleeve, Long Sleeve\",\n" +
+"  \"length\": \"e.g. Crop, Regular, Maxi\",\n" +
+"  \"waist_type\": \"e.g. High Waist, Mid Waist, Low Waist\",\n" +
+"  \"rise\": \"e.g. High Rise, Mid Rise, Low Rise\",\n" +
+"  \"color\": \"e.g. Black, White, Red\",\n" +
+"  \"material\": \"e.g. Cotton, Polyester, Leather\",\n" +
+"  \"fabric_type\": \"e.g. Knit, Woven, Jersey\",\n" +
+"  \"pattern\": \"e.g. Solid, Striped, Floral\",\n" +
+"  \"neckline\": \"e.g. Crew Neck, V-Neck, Turtleneck\",\n" +
+"  \"closure_type\": \"e.g. Zipper, Button, Slip-On\",\n" +
+"  \"details\": \"e.g. Embroidered, Lace, Beaded\",\n" +
+"  \"season\": \"e.g. Summer, Winter, All Seasons\",\n" +
+"  \"usage_occasion\": \"e.g. Casual, Office, Sportswear\",\n" +
+"  \"care_instructions\": \"e.g. Machine Wash, Hand Wash Only\",\n" +
+"  \"stretchability\": \"e.g. No Stretch, Slight Stretch, Stretchy\",\n" +
+"  \"transparency_level\": \"e.g. Opaque, Semi-Sheer, Sheer\",\n" +
+"  \"lining\": \"e.g. Lined, Unlined, Partially Lined\",\n" +
+"  \"sustainability\": \"e.g. Organic Cotton, Recycled, Vegan\"\n" +
+"}";
+
+
+            var ollamaRequest = new
+            {
+                model = "qwen2.5vl:7b",
+                prompt = systemPrompt2,
                 stream = false,
                 images = new[] { base64Image }
             };
@@ -54,13 +88,13 @@ namespace ImageRecognation.Ollama.API.Domain
             var ollamaResult = await response.Content.ReadFromJsonAsync<OllamaApiResponse>();
             var jsonBlock = ExtractJsonArray(ollamaResult?.response);
 
-            var detectedObjects = new List<ClassificationDetectedObject>();
+            var detectedObjects = new List<ClassificationDetectedDetailedObject>();
 
             if (!string.IsNullOrWhiteSpace(jsonBlock))
             {
                 try
                 {
-                    detectedObjects = JsonSerializer.Deserialize<List<ClassificationDetectedObject>>(jsonBlock) ?? new List<ClassificationDetectedObject>();
+                    detectedObjects = JsonSerializer.Deserialize<List<ClassificationDetectedDetailedObject>>(jsonBlock) ?? new List<ClassificationDetectedDetailedObject>();
                 }
                 catch (Exception ex)
                 {
@@ -68,10 +102,9 @@ namespace ImageRecognation.Ollama.API.Domain
                 }
             }
 
-            ClassificationResult detectionResult = new ClassificationResult()
-            {
-                Objects = detectedObjects
-            };
+            ClassificationResult detectionResult = new ClassificationResult();
+
+            detectionResult.Objects.Add(detectedObjects.FirstOrDefault()?.ToDetectedObject());
 
             return detectionResult;
         }

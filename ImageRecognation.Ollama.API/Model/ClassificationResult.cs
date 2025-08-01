@@ -2,6 +2,6 @@
 {
     public record ClassificationResult
     {
-        public List<ClassificationDetectedObject> Objects {  get; set; }
+        public List<ClassificationDetectedObject> Objects { get; set; } = new();
     }
 }
